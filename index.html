@@ -36,6 +36,7 @@
   #start button { flex:none; padding:14px 28px; background:var(--accent); color:#06210f; font-size:16px; }
   #status { color:var(--muted); max-width:340px; }
   .low #top1 { color:var(--warn); }
+  .low .bar i { background:var(--muted); }
 </style>
 </head>
 <body>
@@ -61,13 +62,15 @@
 <script>
 ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
 ort.env.wasm.numThreads = 1;
-const MODEL_VERSION = "3-zoom"; // đổi khi cập nhật model để điện thoại không dùng bản cũ trong cache
+const MODEL_VERSION = "4-khac"; // đổi khi cập nhật model để điện thoại không dùng bản cũ trong cache
 
 const $ = (id) => document.getElementById(id);
 const video = $("video"), canvas = document.createElement("canvas");
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
 let session, meta, inputName, facing = "environment", stream, paused = false;
 const history = [], SMOOTH = 5;
+const MIN_CONF = 0.55;     // dưới ngưỡng này coi như chưa nhận ra (không đoán bừa)
+const REJECT = "khac";     // lớp "không phải 1 trong 10 loài"
 
 async function init() {
   try {
@@ -75,7 +78,7 @@ async function init() {
     canvas.width = canvas.height = meta.imgsz;
     session = await ort.InferenceSession.create("model.onnx?v=" + MODEL_VERSION, { executionProviders: ["wasm"] });
     inputName = session.inputNames[0];
-    $("status").textContent = `Model sẵn sàng · ${meta.classes.length} loài hoa`;
+    $("status").textContent = `Model sẵn sàng · ${meta.classes.filter((c) => c.name !== REJECT).length} loài hoa`;
     $("go").disabled = false;
   } catch (e) { $("status").textContent = "Lỗi tải model: " + e.message; }
 }
@@ -111,12 +114,22 @@ function preprocess() {
 }
 
 function render(p) {
-  const idx = [...p.keys()].sort((a, b) => p[b] - p[a]).slice(0, 3);
-  const c = meta.classes[idx[0]];
-  $("top1").textContent = c.vi;
-  $("sci").textContent = `${c.sci} · ${(p[idx[0]] * 100).toFixed(1)}%`;
-  $("panel").classList.toggle("low", p[idx[0]] < 0.6);
-  $("rows").innerHTML = idx.map((i) => `<div class="row"><span>${meta.classes[i].vi}</span>
+  const order = [...p.keys()].sort((a, b) => p[b] - p[a]);
+  const best = meta.classes[order[0]], conf = p[order[0]];
+  const unknown = best.name === REJECT || conf < MIN_CONF;
+  $("panel").classList.toggle("low", unknown);
+  if (unknown) {
+    $("top1").textContent = "Chưa nhận ra hoa";
+    $("sci").textContent = best.name === REJECT
+      ? "Không phải 1 trong 10 loài, hoặc chưa thấy bông hoa trong khung"
+      : "Chưa chắc chắn, hãy đưa bông hoa vào giữa khung và giữ máy yên";
+  } else {
+    $("top1").textContent = best.vi;
+    $("sci").textContent = `${best.sci} · ${(conf * 100).toFixed(1)}%`;
+  }
+  // 3 loài hoa có xác suất cao nhất (không tính lớp "khác")
+  const flowers = order.filter((i) => meta.classes[i].name !== REJECT).slice(0, 3);
+  $("rows").innerHTML = flowers.map((i) => `<div class="row"><span>${meta.classes[i].vi}</span>
       <span class="pct">${(p[i] * 100).toFixed(0)}%</span><div class="bar"><i style="width:${p[i] * 100}%"></i></div></div>`).join("");
 }
 

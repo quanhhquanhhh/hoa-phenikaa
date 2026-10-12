@@ -22,41 +22,47 @@
   {
    "id": 3,
    "name": "hoa_hong",
-   "vi": "Hoa hồng phấn",
+   "vi": "Hoa hồng",
    "sci": "Rosa sp."
   },
   {
    "id": 4,
+   "name": "khac",
+   "vi": "Không phải 1 trong 10 loài",
+   "sci": "—"
+  },
+  {
+   "id": 5,
    "name": "mai_chi_thien",
    "vi": "Mai chỉ thiên",
    "sci": "Wrightia antidysenterica"
   },
   {
-   "id": 5,
+   "id": 6,
    "name": "mia_do",
    "vi": "Mía dò đỏ",
    "sci": "Costus sp."
   },
   {
-   "id": 6,
+   "id": 7,
    "name": "mo_ket",
    "vi": "Mỏ két",
    "sci": "Heliconia psittacorum"
   },
   {
-   "id": 7,
+   "id": 8,
    "name": "thanh_tu",
    "vi": "Thanh tú",
    "sci": "Evolvulus sp."
   },
   {
-   "id": 8,
+   "id": 9,
    "name": "trang_do",
    "vi": "Trang đỏ",
    "sci": "Ixora coccinea"
   },
   {
-   "id": 9,
+   "id": 10,
    "name": "trang_trang",
    "vi": "Trang trắng",
    "sci": "Ixora finlaysoniana"
