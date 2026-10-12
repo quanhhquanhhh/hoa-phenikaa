@@ -62,7 +62,7 @@
 <script>
 ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
 ort.env.wasm.numThreads = 1;
-const MODEL_VERSION = "4-khac"; // đổi khi cập nhật model để điện thoại không dùng bản cũ trong cache
+const MODEL_VERSION = "5-15loai"; // đổi khi cập nhật model để điện thoại không dùng bản cũ trong cache
 
 const $ = (id) => document.getElementById(id);
 const video = $("video"), canvas = document.createElement("canvas");
@@ -70,7 +70,7 @@ const ctx = canvas.getContext("2d", { willReadFrequently: true });
 let session, meta, inputName, facing = "environment", stream, paused = false;
 const history = [], SMOOTH = 5;
 const MIN_CONF = 0.55;     // dưới ngưỡng này coi như chưa nhận ra (không đoán bừa)
-const REJECT = "khac";     // lớp "không phải 1 trong 10 loài"
+const REJECT = "khac";     // lớp "không phải loài nào trong danh sách"
 
 async function init() {
   try {
@@ -121,7 +121,7 @@ function render(p) {
   if (unknown) {
     $("top1").textContent = "Chưa nhận ra hoa";
     $("sci").textContent = best.name === REJECT
-      ? "Không phải 1 trong 10 loài, hoặc chưa thấy bông hoa trong khung"
+      ? "Không phải loài nào trong danh sách, hoặc chưa thấy bông hoa trong khung"
       : "Chưa chắc chắn, hãy đưa bông hoa vào giữa khung và giữ máy yên";
   } else {
     $("top1").textContent = best.vi;
