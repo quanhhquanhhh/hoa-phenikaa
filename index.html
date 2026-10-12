@@ -61,6 +61,7 @@
 <script>
 ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
 ort.env.wasm.numThreads = 1;
+const MODEL_VERSION = "2-robust"; // đổi khi cập nhật model để điện thoại không dùng bản cũ trong cache
 
 const $ = (id) => document.getElementById(id);
 const video = $("video"), canvas = document.createElement("canvas");
@@ -70,9 +71,9 @@ const history = [], SMOOTH = 5;
 
 async function init() {
   try {
-    meta = await (await fetch("classes.json")).json();
+    meta = await (await fetch("classes.json?v=" + MODEL_VERSION)).json();
     canvas.width = canvas.height = meta.imgsz;
-    session = await ort.InferenceSession.create("model.onnx", { executionProviders: ["wasm"] });
+    session = await ort.InferenceSession.create("model.onnx?v=" + MODEL_VERSION, { executionProviders: ["wasm"] });
     inputName = session.inputNames[0];
     $("status").textContent = `Model sẵn sàng · ${meta.classes.length} loài hoa`;
     $("go").disabled = false;
