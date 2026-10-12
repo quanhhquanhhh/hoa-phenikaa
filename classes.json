@@ -1,0 +1,65 @@
+{
+ "imgsz": 224,
+ "classes": [
+  {
+   "id": 0,
+   "name": "chieu_tim",
+   "vi": "Chiều tím",
+   "sci": "Ruellia simplex"
+  },
+  {
+   "id": 1,
+   "name": "dam_but_do",
+   "vi": "Dâm bụt đỏ",
+   "sci": "Hibiscus rosa-sinensis"
+  },
+  {
+   "id": 2,
+   "name": "dam_but_vang",
+   "vi": "Dâm bụt vàng",
+   "sci": "Hibiscus rosa-sinensis"
+  },
+  {
+   "id": 3,
+   "name": "hoa_hong",
+   "vi": "Hoa hồng phấn",
+   "sci": "Rosa sp."
+  },
+  {
+   "id": 4,
+   "name": "mai_chi_thien",
+   "vi": "Mai chỉ thiên",
+   "sci": "Wrightia antidysenterica"
+  },
+  {
+   "id": 5,
+   "name": "mia_do",
+   "vi": "Mía dò đỏ",
+   "sci": "Costus sp."
+  },
+  {
+   "id": 6,
+   "name": "mo_ket",
+   "vi": "Mỏ két",
+   "sci": "Heliconia psittacorum"
+  },
+  {
+   "id": 7,
+   "name": "thanh_tu",
+   "vi": "Thanh tú",
+   "sci": "Evolvulus sp."
+  },
+  {
+   "id": 8,
+   "name": "trang_do",
+   "vi": "Trang đỏ",
+   "sci": "Ixora coccinea"
+  },
+  {
+   "id": 9,
+   "name": "trang_trang",
+   "vi": "Trang trắng",
+   "sci": "Ixora finlaysoniana"
+  }
+ ]
+}

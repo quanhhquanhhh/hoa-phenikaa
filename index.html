@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b1410">
+<title>Phenikaa Flowers</title>
+<style>
+  :root { --bg:#0b1410; --fg:#eef5f0; --muted:#9db3a6; --accent:#5ee08f; --warn:#ffc857; --card:rgba(10,20,15,.72); }
+  * { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; background:var(--bg); color:var(--fg);
+    font:15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow:hidden; }
+  #stage { position:fixed; inset:0; }
+  video { width:100%; height:100%; object-fit:cover; }
+  #guide { position:absolute; left:50%; top:50%; width:min(78vw,78vh); aspect-ratio:1; transform:translate(-50%,-58%);
+    border:2px solid rgba(255,255,255,.85); border-radius:18px; box-shadow:0 0 0 100vmax rgba(0,0,0,.28); pointer-events:none; }
+  header { position:absolute; top:0; left:0; right:0; padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;
+    display:flex; justify-content:space-between; align-items:center; background:linear-gradient(#000a,#0000); }
+  header b { font-size:16px; letter-spacing:.2px; }
+  #fps { color:var(--muted); font-variant-numeric:tabular-nums; font-size:13px; }
+  #panel { position:absolute; left:12px; right:12px; bottom:calc(env(safe-area-inset-bottom) + 12px);
+    background:var(--card); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    border-radius:18px; padding:14px 16px; }
+  #top1 { font-size:26px; font-weight:700; }
+  #sci { color:var(--muted); font-style:italic; font-size:13px; margin-bottom:8px; }
+  .row { display:grid; grid-template-columns: 1fr 52px; gap:8px; align-items:center; margin:5px 0; font-size:14px; }
+  .bar { height:6px; border-radius:3px; background:#ffffff1f; overflow:hidden; grid-column:1/3; margin-top:-3px; }
+  .bar i { display:block; height:100%; background:var(--accent); transition:width .15s; }
+  .pct { text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); }
+  .btns { display:flex; gap:8px; margin-top:12px; }
+  button { flex:1; padding:11px; border:0; border-radius:12px; background:#ffffff1a; color:var(--fg); font-size:14px; font-weight:600; }
+  button:active { background:#ffffff33; }
+  #start { position:absolute; inset:0; display:flex; flex-direction:column; gap:14px; align-items:center; justify-content:center;
+    text-align:center; padding:24px; background:var(--bg); }
+  #start button { flex:none; padding:14px 28px; background:var(--accent); color:#06210f; font-size:16px; }
+  #status { color:var(--muted); max-width:340px; }
+  .low #top1 { color:var(--warn); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="video" playsinline muted></video>
+  <div id="guide"></div>
+  <header><b>🌼 Phenikaa Flowers</b><span id="fps">– FPS</span></header>
+  <div id="panel">
+    <div id="top1">…</div>
+    <div id="sci">Đưa bông hoa vào giữa khung</div>
+    <div id="rows"></div>
+    <div class="btns"><button id="flip">Đổi camera</button><button id="pause">Tạm dừng</button></div>
+  </div>
+</div>
+<div id="start">
+  <div style="font-size:44px">🌺</div>
+  <h2>Nhận diện hoa – Phenikaa Campus</h2>
+  <p id="status">Đang tải model…</p>
+  <button id="go" disabled>Mở camera</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+<script>
+ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+ort.env.wasm.numThreads = 1;
+
+const $ = (id) => document.getElementById(id);
+const video = $("video"), canvas = document.createElement("canvas");
+const ctx = canvas.getContext("2d", { willReadFrequently: true });
+let session, meta, inputName, facing = "environment", stream, paused = false;
+const history = [], SMOOTH = 5;
+
+async function init() {
+  try {
+    meta = await (await fetch("classes.json")).json();
+    canvas.width = canvas.height = meta.imgsz;
+    session = await ort.InferenceSession.create("model.onnx", { executionProviders: ["wasm"] });
+    inputName = session.inputNames[0];
+    $("status").textContent = `Model sẵn sàng · ${meta.classes.length} loài hoa`;
+    $("go").disabled = false;
+  } catch (e) { $("status").textContent = "Lỗi tải model: " + e.message; }
+}
+
+async function openCamera() {
+  if (stream) stream.getTracks().forEach((t) => t.stop());
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+  video.srcObject = stream;
+  await video.play();
+}
+
+// Vùng của video nằm trong khung vuông trên màn hình (video hiển thị kiểu object-fit: cover)
+function guideRegion() {
+  const vw = video.videoWidth, vh = video.videoHeight, r = $("guide").getBoundingClientRect();
+  const W = innerWidth, H = innerHeight, k = Math.max(W / vw, H / vh);
+  const ox = (W - vw * k) / 2, oy = (H - vh * k) / 2;
+  let side = Math.min(r.width / k, vw, vh);
+  let x = (r.left - ox) / k, y = (r.top - oy) / k;
+  x = Math.min(Math.max(x, 0), vw - side); y = Math.min(Math.max(y, 0), vh - side);
+  return [x, y, side];
+}
+
+// Tiền xử lý giống Ultralytics: vùng vuông (trong khung) -> resize 224 -> RGB/255, CHW
+function preprocess() {
+  const s = meta.imgsz, [x, y, side] = guideRegion();
+  ctx.drawImage(video, x, y, side, side, 0, 0, s, s);
+  const px = ctx.getImageData(0, 0, s, s).data, n = s * s, f = new Float32Array(3 * n);
+  for (let i = 0; i < n; i++) {
+    f[i] = px[4 * i] / 255; f[n + i] = px[4 * i + 1] / 255; f[2 * n + i] = px[4 * i + 2] / 255;
+  }
+  return new ort.Tensor("float32", f, [1, 3, s, s]);
+}
+
+function render(p) {
+  const idx = [...p.keys()].sort((a, b) => p[b] - p[a]).slice(0, 3);
+  const c = meta.classes[idx[0]];
+  $("top1").textContent = c.vi;
+  $("sci").textContent = `${c.sci} · ${(p[idx[0]] * 100).toFixed(1)}%`;
+  $("panel").classList.toggle("low", p[idx[0]] < 0.6);
+  $("rows").innerHTML = idx.map((i) => `<div class="row"><span>${meta.classes[i].vi}</span>
+      <span class="pct">${(p[i] * 100).toFixed(0)}%</span><div class="bar"><i style="width:${p[i] * 100}%"></i></div></div>`).join("");
+}
+
+let last = performance.now(), fps = 0;
+async function loop() {
+  if (!paused && video.readyState >= 2) {
+    const out = await session.run({ [inputName]: preprocess() });
+    const prob = out[session.outputNames[0]].data;          // model export đã có softmax
+    history.push(Float32Array.from(prob)); if (history.length > SMOOTH) history.shift();
+    const avg = prob.map((_, k) => history.reduce((s, h) => s + h[k], 0) / history.length);
+    render(avg);
+    const now = performance.now(); fps = fps ? 0.9 * fps + 100 / (now - last) : 1000 / (now - last); last = now;
+    $("fps").textContent = `${fps.toFixed(0)} FPS`;
+  }
+  requestAnimationFrame(loop);
+}
+
+$("go").onclick = async () => {
+  try { await openCamera(); $("start").remove(); loop(); }
+  catch (e) { $("status").textContent = "Không mở được camera: " + e.message +
+    (isSecureContext ? "" : " (cần mở bằng https://)"); }
+};
+$("flip").onclick = async () => { facing = facing === "environment" ? "user" : "environment"; history.length = 0; await openCamera(); };
+$("pause").onclick = () => { paused = !paused; $("pause").textContent = paused ? "Tiếp tục" : "Tạm dừng";
+  paused ? video.pause() : video.play(); };
+init();
+</script>
+</body>
+</html>
