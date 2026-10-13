@@ -7,4 +7,4 @@ Mô hình **YOLO11n-detect** (2,6M tham số) chạy ngay trên trình duyệt b
 
 Các loài: Chiều tím, Dâm bụt đỏ, Dâm bụt vàng, Hoa hồng, Huỳnh anh, Lài trâu (Ngọc bút), Mía dò đỏ, Mỏ két, Trang đỏ, Trang vàng.
 
-Test (563 ảnh): mAP50 = 0,838, mAP50-95 = 0,656.
+Test (574 ảnh, đã sửa nhãn sai và chia tập theo thời gian): mAP50 = 0,862, mAP50-95 = 0,654.
