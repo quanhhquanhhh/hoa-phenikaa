@@ -4,54 +4,193 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0b1410">
-<title>Phenikaa Flowers</title>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#07110c">
+<title>Hoa Phenikaa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#0b1410; --fg:#eef5f0; --muted:#9db3a6; --accent:#5ee08f; --card:rgba(10,20,15,.72); }
-  * { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; }
-  html, body { height:100%; background:var(--bg); color:var(--fg);
-    font:15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow:hidden; }
-  #stage { position:fixed; inset:0; }
+  :root {
+    --bg:#07110c; --bg2:#0d1f16; --fg:#f1f7f3; --muted:#9fb6a9; --line:#ffffff1f;
+    --accent:#4ade80; --accent-ink:#052e14; --glass:rgba(8,18,13,.62);
+    --font:"Be Vietnam Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; background:var(--bg); color:var(--fg); font:15px/1.45 var(--font); overflow:hidden;
+    -webkit-font-smoothing:antialiased; user-select:none; -webkit-user-select:none; }
+  button { font:inherit; color:inherit; border:0; background:none; cursor:pointer; }
+  svg { display:block; }
+  .glass { background:var(--glass); backdrop-filter:blur(18px) saturate(1.4); -webkit-backdrop-filter:blur(18px) saturate(1.4);
+    border:1px solid var(--line); }
+
+  /* ---------- màn hình camera ---------- */
+  #stage { position:fixed; inset:0; background:#000; }
   video, #overlay { position:absolute; inset:0; width:100%; height:100%; }
   video { object-fit:cover; }
-  header { position:absolute; top:0; left:0; right:0; padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;
-    display:flex; justify-content:space-between; align-items:center; background:linear-gradient(#000a,#0000); }
-  header b { font-size:16px; }
-  #fps { color:var(--muted); font-variant-numeric:tabular-nums; font-size:13px; }
-  #panel { position:absolute; left:12px; right:12px; bottom:calc(env(safe-area-inset-bottom) + 12px);
-    background:var(--card); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-radius:18px; padding:14px 16px; }
-  #title { font-size:22px; font-weight:700; }
-  #sub { color:var(--muted); font-size:13px; margin:2px 0 6px; }
-  #list { display:flex; flex-wrap:wrap; gap:6px; min-height:4px; }
-  .chip { display:flex; align-items:center; gap:6px; padding:5px 10px; border-radius:99px; background:#ffffff14; font-size:14px; }
-  .chip i { width:10px; height:10px; border-radius:50%; display:inline-block; }
-  .chip span { color:var(--muted); font-variant-numeric:tabular-nums; }
-  .btns { display:flex; gap:8px; margin-top:12px; }
-  button { flex:1; padding:11px; border:0; border-radius:12px; background:#ffffff1a; color:var(--fg); font-size:14px; font-weight:600; }
-  button:active { background:#ffffff33; }
-  #start { position:absolute; inset:0; display:flex; flex-direction:column; gap:14px; align-items:center; justify-content:center;
-    text-align:center; padding:24px; background:var(--bg); }
-  #start button { flex:none; padding:14px 28px; background:var(--accent); color:#06210f; font-size:16px; }
-  #status { color:var(--muted); max-width:340px; }
+  #shade { position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(#000a 0, #0000 18%, #0000 62%, #000c 100%); }
+
+  header { position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:center;
+    padding:calc(env(safe-area-inset-top) + 12px) 14px 0; gap:8px; }
+  .pill { display:flex; align-items:center; gap:8px; height:36px; padding:0 14px; border-radius:99px; font-size:14px; font-weight:600; }
+  .live { width:8px; height:8px; border-radius:50%; background:#ff4d4d; box-shadow:0 0 0 0 #ff4d4d88; animation:pulse 1.6s infinite; }
+  .paused .live { background:#ffd60a; animation:none; }
+  @keyframes pulse { 70% { box-shadow:0 0 0 8px #ff4d4d00; } 100% { box-shadow:0 0 0 0 #ff4d4d00; } }
+  #fps { color:var(--muted); font-weight:500; font-variant-numeric:tabular-nums; font-size:13px; }
+  .round { width:36px; height:36px; border-radius:50%; display:grid; place-items:center; }
+
+  /* khung ngắm: hiện khi chưa thấy hoa */
+  #finder { position:absolute; left:50%; top:42%; width:min(62vw, 300px); aspect-ratio:1; transform:translate(-50%,-50%);
+    pointer-events:none; transition:opacity .35s, transform .35s; }
+  #finder i { position:absolute; width:34px; height:34px; border:3px solid #fffd; filter:drop-shadow(0 1px 3px #0008); }
+  #finder i:nth-child(1) { top:0; left:0; border-right:0; border-bottom:0; border-top-left-radius:18px; }
+  #finder i:nth-child(2) { top:0; right:0; border-left:0; border-bottom:0; border-top-right-radius:18px; }
+  #finder i:nth-child(3) { bottom:0; left:0; border-right:0; border-top:0; border-bottom-left-radius:18px; }
+  #finder i:nth-child(4) { bottom:0; right:0; border-left:0; border-top:0; border-bottom-right-radius:18px; }
+  #finder b { position:absolute; left:8%; right:8%; height:2px; top:10%; border-radius:2px;
+    background:linear-gradient(90deg, #0000, var(--accent), #0000); box-shadow:0 0 12px var(--accent); animation:scan 2.2s ease-in-out infinite; }
+  @keyframes scan { 50% { top:88%; } }
+  #finder.hide { opacity:0; transform:translate(-50%,-50%) scale(1.08); }
+  .paused #finder b { animation-play-state:paused; }
+
+  /* thẻ kết quả */
+  #sheet { position:absolute; left:50%; transform:translateX(-50%); width:min(100% - 24px, 480px);
+    bottom:calc(env(safe-area-inset-bottom) + 112px); border-radius:22px; padding:14px 16px 15px; }
+  #sheet .row { display:flex; align-items:center; gap:12px; }
+  #dot { width:14px; height:14px; border-radius:50%; flex:none; background:#ffffff40; box-shadow:0 0 0 4px #ffffff12; transition:background .25s; }
+  #title { font-size:22px; font-weight:800; letter-spacing:-.01em; line-height:1.2; flex:1; min-width:0;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #score { font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--accent); }
+  #sub { color:var(--muted); font-size:13.5px; margin:3px 0 0 26px; font-style:italic; min-height:19px; }
+  #bar { height:5px; border-radius:5px; background:#ffffff1a; margin:10px 0 0 26px; overflow:hidden; }
+  #bar i { display:block; height:100%; width:0; border-radius:5px; background:var(--accent); transition:width .25s, background .25s; }
+  #list { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 0 26px; }
+  #list:empty { display:none; }
+  .chip { display:flex; align-items:center; gap:6px; height:30px; padding:0 11px 0 9px; border-radius:99px; background:#ffffff14;
+    font-size:13.5px; font-weight:600; }
+  .chip i { width:9px; height:9px; border-radius:50%; }
+  .chip span { color:var(--muted); font-weight:500; font-variant-numeric:tabular-nums; }
+
+  /* thanh điều khiển */
+  #controls { position:absolute; left:0; right:0; bottom:calc(env(safe-area-inset-bottom) + 18px);
+    display:flex; justify-content:center; align-items:center; gap:44px; }
+  .ctl { width:52px; height:52px; border-radius:50%; display:grid; place-items:center; }
+  .ctl:active { transform:scale(.92); }
+  #shot { width:76px; height:76px; border-radius:50%; border:4px solid #fff; display:grid; place-items:center; transition:transform .12s; }
+  #shot i { width:60px; height:60px; border-radius:50%; background:#fff; transition:transform .12s; }
+  #shot:active i { transform:scale(.86); }
+  #flash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; transition:opacity .4s; }
+  #flash.on { opacity:.8; transition:none; }
+  #toast { position:absolute; left:50%; top:calc(env(safe-area-inset-top) + 64px); transform:translate(-50%,-10px); opacity:0;
+    padding:9px 16px; border-radius:99px; font-size:14px; font-weight:600; transition:.25s; pointer-events:none; white-space:nowrap; }
+  #toast.on { opacity:1; transform:translate(-50%,0); }
+
+  /* danh sách loài */
+  #info { position:absolute; inset:0; background:#0008; display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity .25s; }
+  #info.on { opacity:1; pointer-events:auto; }
+  #info .card { width:100%; max-width:560px; margin:0 auto; max-height:78%; overflow:auto; border-radius:24px 24px 0 0; border-bottom:0;
+    padding:10px 18px calc(env(safe-area-inset-bottom) + 18px); transform:translateY(30px); transition:transform .3s; }
+  #info.on .card { transform:none; }
+  .grab { width:40px; height:5px; border-radius:5px; background:#ffffff40; margin:0 auto 14px; }
+  .card h3 { font-size:18px; font-weight:800; }
+  .card p.note { color:var(--muted); font-size:13px; margin:4px 0 12px; }
+
+  /* ---------- màn hình mở đầu ---------- */
+  #start { position:fixed; inset:0; overflow:auto; display:flex; flex-direction:column;
+    padding:calc(env(safe-area-inset-top) + 28px) 20px calc(env(safe-area-inset-bottom) + 20px);
+    background:radial-gradient(120% 70% at 50% -10%, #1f5a37 0%, #0d2418 45%, var(--bg) 80%); transition:opacity .35s; }
+  #start.out { opacity:0; pointer-events:none; }
+  .wrap { width:100%; max-width:440px; margin:0 auto; display:flex; flex-direction:column; flex:1; }
+  .logo { width:64px; height:64px; border-radius:20px; display:grid; place-items:center; font-size:34px;
+    background:linear-gradient(145deg, #ffffff26, #ffffff08); border:1px solid var(--line); box-shadow:0 10px 30px #0006; }
+  .eyebrow { margin-top:22px; color:var(--accent); font-size:12.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+  #start h1 { font-size:34px; line-height:1.1; font-weight:800; letter-spacing:-.02em; margin-top:6px; }
+  .lead { color:var(--muted); margin-top:10px; font-size:15px; }
+  .species { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:22px; }
+  .sp { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:#ffffff0d; border:1px solid #ffffff12; min-width:0; }
+  .sp i { width:10px; height:10px; border-radius:50%; flex:none; }
+  .sp div { min-width:0; }
+  .sp b { display:block; font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sp small { display:block; color:var(--muted); font-size:11.5px; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .grow { flex:1; min-height:22px; }
+  .load { display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:8px; }
+  .load b { color:var(--fg); font-weight:600; font-variant-numeric:tabular-nums; }
+  .track { height:6px; border-radius:6px; background:#ffffff14; overflow:hidden; }
+  .track i { display:block; height:100%; width:0; background:linear-gradient(90deg, #22c55e, var(--accent)); border-radius:6px; transition:width .2s; }
+  #go { width:100%; height:56px; margin-top:16px; border-radius:16px; background:var(--accent); color:var(--accent-ink);
+    font-size:17px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:10px;
+    box-shadow:0 10px 30px #4ade8040; transition:opacity .2s, transform .12s; }
+  #go:active { transform:scale(.98); }
+  #go:disabled { opacity:.35; box-shadow:none; }
+  .foot { text-align:center; color:var(--muted); font-size:12px; margin-top:12px; }
+  .err { color:#ff8a8a !important; }
 </style>
 </head>
 <body>
 <div id="stage">
   <video id="video" playsinline muted></video>
   <canvas id="overlay"></canvas>
-  <header><b>🌼 Phenikaa Flowers</b><span id="fps">– FPS</span></header>
-  <div id="panel">
-    <div id="title">Đang tìm hoa…</div>
+  <div id="shade"></div>
+  <div id="finder"><i></i><i></i><i></i><i></i><b></b></div>
+
+  <header>
+    <div class="pill glass"><span class="live"></span>Hoa Phenikaa</div>
+    <div style="display:flex; gap:8px; align-items:center">
+      <div class="pill glass" id="fps">– FPS</div>
+      <button class="round glass" id="infoBtn" aria-label="Danh sách loài">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6M12 7.5v.01"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div id="sheet" class="glass">
+    <div class="row"><span id="dot"></span><div id="title">Đang tìm hoa…</div><div id="score"></div></div>
     <div id="sub">Hướng camera vào bụi hoa</div>
+    <div id="bar"><i></i></div>
     <div id="list"></div>
-    <div class="btns"><button id="flip">Đổi camera</button><button id="pause">Tạm dừng</button></div>
+  </div>
+
+  <div id="controls">
+    <button class="ctl glass" id="flip" aria-label="Đổi camera">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 20v-4h-4"/></svg>
+    </button>
+    <button id="shot" aria-label="Chụp ảnh kết quả"><i></i></button>
+    <button class="ctl glass" id="pause" aria-label="Tạm dừng">
+      <svg id="icPause" width="22" height="22" viewBox="0 0 24 24" fill="#fff"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>
+      <svg id="icPlay" width="22" height="22" viewBox="0 0 24 24" fill="#fff" style="display:none"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+    </button>
+  </div>
+
+  <div id="flash"></div>
+  <div id="toast" class="glass"></div>
+
+  <div id="info">
+    <div class="card glass">
+      <div class="grab"></div>
+      <h3>10 loài hoa nhận diện được</h3>
+      <p class="note">Mỗi loài có một màu khung riêng. Hoa không thuộc danh sách sẽ không được khoanh.</p>
+      <div class="species" id="infoList" style="margin-top:0"></div>
+    </div>
   </div>
 </div>
+
 <div id="start">
-  <div style="font-size:44px">🌺</div>
-  <h2>Nhận diện hoa – Phenikaa Campus</h2>
-  <p id="status">Đang tải model…</p>
-  <button id="go" disabled>Mở camera</button>
+  <div class="wrap">
+    <div class="logo">🌺</div>
+    <div class="eyebrow">Phenikaa Campus · AI</div>
+    <h1>Nhận diện hoa<br>theo thời gian thực</h1>
+    <p class="lead">Hướng camera vào bụi hoa, app sẽ khoanh từng bông và cho biết tên loài.</p>
+    <div class="species" id="startList"></div>
+    <div class="grow"></div>
+    <div class="load"><span id="status">Đang tải model…</span><b id="pct">0%</b></div>
+    <div class="track"><i id="prog"></i></div>
+    <button id="go" disabled>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7.5 6.5H4a1.5 1.5 0 0 0-1.5 1.5v10A1.5 1.5 0 0 0 4 19.5h16a1.5 1.5 0 0 0 1.5-1.5V8A1.5 1.5 0 0 0 20 6.5h-3.5z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      Mở camera
+    </button>
+    <p class="foot">Chạy ngay trên máy · ảnh không gửi đi đâu</p>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.all.min.js"></script>
@@ -64,34 +203,56 @@ const CONF = 0.45, IOU = 0.5, MAX_DET = 30, SMOOTH_HITS = 2;
 const $ = (id) => document.getElementById(id);
 const video = $("video"), overlay = $("overlay"), octx = overlay.getContext("2d");
 const inCanvas = document.createElement("canvas"), ictx = inCanvas.getContext("2d", { willReadFrequently: true });
-let session, meta, S, facing = "environment", stream, paused = false, backend = "";
+let session, meta, S, facing = "environment", stream, paused = false, backend = "", prevDets = [];
 const recent = [];   // lịch sử vài khung gần nhất để danh sách loài không nhấp nháy
-const PALETTE = ["#ff6b6b","#ffd93d","#6bcB77","#4d96ff","#ff9f1c","#c77dff","#f15bb5","#00bbf9","#9ef01a",
-                 "#ffadad","#fdffb6","#caffbf","#9bf6ff","#a0c4ff","#bdb2ff","#ffc6ff","#e9c46a","#2ec4b6"];
+// mỗi loài một màu cố định, dễ phân biệt trên nền lá xanh
+const COLORS = { chieu_tim:"#b388ff", dam_but_do:"#ff4d4d", dam_but_vang:"#ffd60a", hoa_hong:"#ff70a6", huynh_anh:"#c0f03c",
+                 lai_trau:"#48cae4", mia_do:"#ff9e40", mo_ket:"#2ee6a6", trang_do:"#f72585", trang_vang:"#7b9cff" };
+const FALLBACK = ["#ff6b6b","#ffd93d","#6bcb77","#4d96ff","#ff9f1c","#c77dff","#f15bb5","#00bbf9","#9ef01a","#ffadad"];
+const colorOf = (c) => COLORS[meta.classes[c].name] || FALLBACK[c % FALLBACK.length];
+
+function speciesGrid() {
+  return meta.classes.map((c, i) =>
+    `<div class="sp"><i style="background:${colorOf(i)}"></i><div><b>${c.vi}</b><small>${c.sci}</small></div></div>`).join("");
+}
 
 async function init() {
   try {
     meta = await (await fetch("classes.json?v=" + MODEL_VERSION)).json();
     S = meta.imgsz; inCanvas.width = inCanvas.height = S;
-    const opts = (ep) => ({ executionProviders: [ep], graphOptimizationLevel: "all" });
+    $("startList").innerHTML = $("infoList").innerHTML = speciesGrid();
     const model = await loadModel();
+    $("status").textContent = "Đang khởi tạo…";
+    const opts = (ep) => ({ executionProviders: [ep], graphOptimizationLevel: "all" });
     for (const ep of (navigator.gpu ? ["webgpu", "wasm"] : ["wasm"])) {
       try { session = await ort.InferenceSession.create(model, opts(ep)); backend = ep; break; }
       catch (e) { console.warn(ep, e); }
     }
     if (!session) throw new Error("không khởi tạo được ONNX Runtime");
-    $("status").textContent = `Model sẵn sàng · ${meta.classes.length} loài hoa`;
+    $("status").textContent = "Sẵn sàng"; $("pct").textContent = "✓"; $("prog").style.width = "100%";
     $("go").disabled = false;
-  } catch (e) { $("status").textContent = "Lỗi tải model: " + e.message; }
+  } catch (e) { $("status").textContent = "Lỗi tải model: " + e.message; $("status").classList.add("err"); }
 }
 
-// Model được chia thành nhiều phần (giới hạn upload) -> tải song song rồi ghép lại thành 1 file ONNX
+// Model được chia thành nhiều phần (giới hạn upload) -> tải song song (có % tiến độ) rồi ghép lại thành 1 file ONNX
 async function loadModel() {
   const parts = meta.model_parts || ["model.onnx"];
-  const bufs = await Promise.all(parts.map(async (p) => {
+  const got = parts.map(() => 0), total = parts.map(() => 0);
+  const tick = () => {
+    const t = total.reduce((a, b) => a + b, 0), g = got.reduce((a, b) => a + b, 0);
+    const p = t ? Math.min(99, (g / t) * 100) : 0;
+    $("prog").style.width = p + "%";
+    $("pct").textContent = t ? p.toFixed(0) + "%" : (g / 1e6).toFixed(1) + " MB";
+  };
+  const bufs = await Promise.all(parts.map(async (p, i) => {
     const r = await fetch(p + "?v=" + MODEL_VERSION);
     if (!r.ok) throw new Error(p + " " + r.status);
-    return new Uint8Array(await r.arrayBuffer());
+    total[i] = +r.headers.get("content-length") || 0;
+    if (!r.body || !total[i]) { const b = new Uint8Array(await r.arrayBuffer()); got[i] = total[i] = b.length; tick(); return b; }
+    const reader = r.body.getReader(), chunks = [];
+    for (;;) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); got[i] += value.length; tick(); }
+    const b = new Uint8Array(got[i]); let o = 0; for (const c of chunks) { b.set(c, o); o += c.length; }
+    return b;
   }));
   const out = new Uint8Array(bufs.reduce((n, b) => n + b.length, 0));
   let off = 0; for (const b of bufs) { out.set(b, off); off += b.length; }
@@ -142,22 +303,54 @@ function postprocess(out, nc) {
   return keep;
 }
 
+// Làm mượt khung: nối với khung cùng loài ở frame trước (IoU cao) rồi trộn toạ độ -> khung bớt rung
+function smooth(dets) {
+  for (const d of dets) {
+    let best = null, bi = 0.3;
+    for (const p of prevDets) if (p.cls === d.cls) { const v = iou(p.box, d.box); if (v > bi) { bi = v; best = p; } }
+    if (best) d.box = d.box.map((v, i) => 0.6 * v + 0.4 * best.box[i]);
+  }
+  prevDets = dets;
+  return dets;
+}
+
+function rrect(ctx, x, y, w, h, r) {
+  r = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
 function draw(dets, lb) {
   const W = overlay.clientWidth, H = overlay.clientHeight, dpr = devicePixelRatio || 1;
-  if (overlay.width !== W * dpr) { overlay.width = W * dpr; overlay.height = H * dpr; }
+  if (overlay.width !== Math.round(W * dpr) || overlay.height !== Math.round(H * dpr)) {
+    overlay.width = Math.round(W * dpr); overlay.height = Math.round(H * dpr);
+  }
   octx.setTransform(dpr, 0, 0, dpr, 0, 0); octx.clearRect(0, 0, W, H);
   // video hiển thị kiểu object-fit: cover -> quy đổi toạ độ ảnh gốc sang màn hình
   const vw = video.videoWidth, vh = video.videoHeight, k = Math.max(W / vw, H / vh);
   const ox = (W - vw * k) / 2, oy = (H - vh * k) / 2;
-  octx.lineWidth = 3; octx.font = "600 15px -apple-system, Segoe UI, sans-serif"; octx.textBaseline = "top";
+  octx.font = "700 14px 'Be Vietnam Pro', -apple-system, sans-serif"; octx.textBaseline = "middle";
   for (const d of dets) {
     const [x0, y0, x1, y1] = d.box.map((v, i) => (i % 2 ? (v - lb.py) / lb.r : (v - lb.px) / lb.r));
-    const X0 = ox + x0 * k, Y0 = oy + y0 * k, X1 = ox + x1 * k, Y1 = oy + y1 * k, col = PALETTE[d.cls % PALETTE.length];
-    octx.strokeStyle = col; octx.strokeRect(X0, Y0, X1 - X0, Y1 - Y0);
-    const label = `${meta.classes[d.cls].vi} ${(d.score * 100).toFixed(0)}%`, tw = octx.measureText(label).width + 10;
-    const ty = Y0 > 24 ? Y0 - 24 : Y0;
-    octx.fillStyle = col; octx.fillRect(X0 - 1.5, ty, tw, 24);
-    octx.fillStyle = "#0b1410"; octx.fillText(label, X0 + 4, ty + 4);
+    const X0 = ox + x0 * k, Y0 = oy + y0 * k, w = (x1 - x0) * k, h = (y1 - y0) * k, col = colorOf(d.cls);
+    const r = Math.min(14, w / 5, h / 5), c = Math.min(22, w / 3, h / 3);
+    // khung mảnh + góc đậm
+    octx.save(); octx.shadowColor = "#0009"; octx.shadowBlur = 6;
+    octx.strokeStyle = col + "aa"; octx.lineWidth = 1.5; rrect(octx, X0, Y0, w, h, r); octx.stroke();
+    octx.strokeStyle = col; octx.lineWidth = 4; octx.lineCap = "round";
+    octx.beginPath();
+    octx.moveTo(X0, Y0 + c); octx.lineTo(X0, Y0 + r); octx.arcTo(X0, Y0, X0 + r, Y0, r); octx.lineTo(X0 + c, Y0);
+    octx.moveTo(X0 + w - c, Y0); octx.lineTo(X0 + w - r, Y0); octx.arcTo(X0 + w, Y0, X0 + w, Y0 + r, r); octx.lineTo(X0 + w, Y0 + c);
+    octx.moveTo(X0 + w, Y0 + h - c); octx.lineTo(X0 + w, Y0 + h - r); octx.arcTo(X0 + w, Y0 + h, X0 + w - r, Y0 + h, r); octx.lineTo(X0 + w - c, Y0 + h);
+    octx.moveTo(X0 + c, Y0 + h); octx.lineTo(X0 + r, Y0 + h); octx.arcTo(X0, Y0 + h, X0, Y0 + h - r, r); octx.lineTo(X0, Y0 + h - c);
+    octx.stroke(); octx.restore();
+    // nhãn tên loài dạng viên thuốc phía trên khung
+    const name = meta.classes[d.cls].vi, pct = ` ${(d.score * 100).toFixed(0)}%`;
+    const tw = octx.measureText(name).width, pw = octx.measureText(pct).width, LW = tw + pw + 22, LH = 26;
+    const lx = Math.max(6, Math.min(X0, W - LW - 6)), ly = Y0 > LH + 8 ? Y0 - LH - 6 : Y0 + 6;
+    octx.fillStyle = col; rrect(octx, lx, ly, LW, LH, LH / 2); octx.fill();
+    octx.fillStyle = "#08130d"; octx.fillText(name, lx + 11, ly + LH / 2 + 1);
+    octx.fillStyle = "#08130daa"; octx.fillText(pct, lx + 11 + tw, ly + LH / 2 + 1);
   }
 }
 
@@ -171,16 +364,28 @@ function renderList(dets) {
     for (const [c, s] of seen) { const h = hits.get(c) || { n: 0, s: 0 }; hits.set(c, { n: h.n + 1, s: Math.max(h.s, s) }); }
   }
   const species = [...hits].filter(([, h]) => h.n >= SMOOTH_HITS).sort((a, b) => b[1].s - a[1].s);
+  $("finder").classList.toggle("hide", species.length > 0);
   if (!species.length) {
     $("title").textContent = "Chưa nhận ra hoa";
-    $("sub").textContent = "Đưa bông hoa vào khung hình, giữ máy yên";
-  } else {
-    const top = meta.classes[species[0][0]];
-    $("title").textContent = species.length === 1 ? top.vi : `${species.length} loài hoa`;
-    $("sub").textContent = species.length === 1 ? top.sci : "Mỗi khung màu là một bông hoa";
+    $("sub").textContent = "Đưa bông hoa vào khung, giữ máy yên";
+    $("score").textContent = ""; $("dot").style.background = ""; $("bar").style.display = "none"; $("list").innerHTML = "";
+    return;
   }
-  $("list").innerHTML = species.map(([c, h]) =>
-    `<div class="chip"><i style="background:${PALETTE[c % PALETTE.length]}"></i>${meta.classes[c].vi} <span>${(h.s * 100).toFixed(0)}%</span></div>`).join("");
+  const [c0, h0] = species[0], col = colorOf(c0);
+  $("dot").style.background = col;
+  if (species.length === 1) {
+    $("title").textContent = meta.classes[c0].vi;
+    $("sub").textContent = meta.classes[c0].sci;
+    $("score").textContent = (h0.s * 100).toFixed(0) + "%"; $("score").style.color = col;
+    $("bar").style.display = ""; $("bar").firstChild.style.width = (h0.s * 100) + "%"; $("bar").firstChild.style.background = col;
+    $("list").innerHTML = "";
+  } else {
+    $("title").textContent = `${species.length} loài hoa`;
+    $("sub").textContent = "Mỗi màu khung là một loài";
+    $("score").textContent = ""; $("bar").style.display = "none";
+    $("list").innerHTML = species.map(([c, h]) =>
+      `<div class="chip"><i style="background:${colorOf(c)}"></i>${meta.classes[c].vi} <span>${(h.s * 100).toFixed(0)}%</span></div>`).join("");
+  }
 }
 
 let last = performance.now(), fps = 0;
@@ -188,20 +393,60 @@ async function loop() {
   if (!paused && video.readyState >= 2) {
     const lb = preprocess();
     const out = await session.run({ [session.inputNames[0]]: lb.tensor });
-    const dets = postprocess(out[session.outputNames[0]], meta.classes.length);
+    const dets = smooth(postprocess(out[session.outputNames[0]], meta.classes.length));
     draw(dets, lb); renderList(dets);
     const now = performance.now(); fps = fps ? 0.9 * fps + 100 / (now - last) : 1000 / (now - last); last = now;
-    $("fps").textContent = `${fps.toFixed(0)} FPS · ${backend}`;
+    $("fps").textContent = `${fps.toFixed(0)} FPS`;
   }
   requestAnimationFrame(loop);
 }
 
+let toastT;
+function toast(msg) {
+  $("toast").textContent = msg; $("toast").classList.add("on");
+  clearTimeout(toastT); toastT = setTimeout(() => $("toast").classList.remove("on"), 1800);
+}
+
+// Chụp ảnh: ghép khung hình camera (cắt giống màn hình) + khung nhận diện -> chia sẻ / tải về
+async function capture() {
+  if (!video.videoWidth) return;
+  $("flash").classList.add("on"); requestAnimationFrame(() => requestAnimationFrame(() => $("flash").classList.remove("on")));
+  const W = overlay.width, H = overlay.height, vw = video.videoWidth, vh = video.videoHeight, k = Math.max(W / vw, H / vh);
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const ctx = c.getContext("2d");
+  ctx.drawImage(video, (W - vw * k) / 2, (H - vh * k) / 2, vw * k, vh * k);
+  ctx.drawImage(overlay, 0, 0);
+  const blob = await new Promise((res) => c.toBlob(res, "image/jpeg", 0.92));
+  const file = new File([blob], `hoa-phenikaa-${Date.now()}.jpg`, { type: "image/jpeg" });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "Hoa Phenikaa" }); return; }
+  } catch (e) { if (e.name === "AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast("Đã lưu ảnh");
+}
+
 $("go").onclick = async () => {
-  try { await openCamera(); $("start").remove(); loop(); }
-  catch (e) { $("status").textContent = "Không mở được camera: " + e.message + (isSecureContext ? "" : " (cần https://)"); }
+  try {
+    await openCamera(); $("start").classList.add("out"); setTimeout(() => $("start").remove(), 400); loop();
+  } catch (e) {
+    $("status").textContent = "Không mở được camera: " + e.message + (isSecureContext ? "" : " (cần https://)");
+    $("status").classList.add("err");
+  }
 };
-$("flip").onclick = async () => { facing = facing === "environment" ? "user" : "environment"; recent.length = 0; await openCamera(); };
-$("pause").onclick = () => { paused = !paused; $("pause").textContent = paused ? "Tiếp tục" : "Tạm dừng"; paused ? video.pause() : video.play(); };
+$("flip").onclick = async () => {
+  facing = facing === "environment" ? "user" : "environment"; recent.length = 0; prevDets = [];
+  try { await openCamera(); } catch (e) { toast("Không đổi được camera"); }
+};
+$("pause").onclick = () => {
+  paused = !paused; $("stage").classList.toggle("paused", paused);
+  $("icPause").style.display = paused ? "none" : ""; $("icPlay").style.display = paused ? "" : "none";
+  paused ? video.pause() : video.play();
+  toast(paused ? "Đã tạm dừng" : "Tiếp tục nhận diện");
+};
+$("shot").onclick = capture;
+$("infoBtn").onclick = () => $("info").classList.add("on");
+$("info").onclick = (e) => { if (e.target === $("info")) $("info").classList.remove("on"); };
 init();
 </script>
 </body>
