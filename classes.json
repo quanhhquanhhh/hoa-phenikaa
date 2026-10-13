@@ -1,101 +1,69 @@
 {
- "imgsz": 224,
+ "imgsz": 640,
  "classes": [
   {
    "id": 0,
-   "name": "bach_dong_nu",
-   "vi": "Bạch đồng nữ",
-   "sci": "Clerodendrum sp."
-  },
-  {
-   "id": 1,
    "name": "chieu_tim",
    "vi": "Chiều tím",
    "sci": "Ruellia simplex"
   },
   {
-   "id": 2,
-   "name": "dam_but_cam",
-   "vi": "Dâm bụt cam",
-   "sci": "Hibiscus rosa-sinensis"
-  },
-  {
-   "id": 3,
+   "id": 1,
    "name": "dam_but_do",
    "vi": "Dâm bụt đỏ",
    "sci": "Hibiscus rosa-sinensis"
   },
   {
-   "id": 4,
-   "name": "dam_but_hong",
-   "vi": "Dâm bụt hồng",
-   "sci": "Hibiscus rosa-sinensis"
-  },
-  {
-   "id": 5,
+   "id": 2,
    "name": "dam_but_vang",
    "vi": "Dâm bụt vàng",
    "sci": "Hibiscus rosa-sinensis"
   },
   {
-   "id": 6,
+   "id": 3,
    "name": "hoa_hong",
    "vi": "Hoa hồng",
    "sci": "Rosa sp."
   },
   {
-   "id": 7,
+   "id": 4,
    "name": "huynh_anh",
    "vi": "Huỳnh anh",
    "sci": "Allamanda cathartica"
   },
   {
-   "id": 8,
-   "name": "khac",
-   "vi": "Không phải loài nào trong danh sách",
-   "sci": "—"
-  },
-  {
-   "id": 9,
+   "id": 5,
    "name": "lai_trau",
    "vi": "Lài trâu",
    "sci": "Tabernaemontana divaricata"
   },
   {
-   "id": 10,
-   "name": "mai_chi_thien",
-   "vi": "Mai chỉ thiên",
-   "sci": "Wrightia antidysenterica"
-  },
-  {
-   "id": 11,
+   "id": 6,
    "name": "mia_do",
    "vi": "Mía dò đỏ",
    "sci": "Costus sp."
   },
   {
-   "id": 12,
+   "id": 7,
    "name": "mo_ket",
    "vi": "Mỏ két",
    "sci": "Heliconia psittacorum"
   },
   {
-   "id": 13,
-   "name": "thanh_tu",
-   "vi": "Thanh tú",
-   "sci": "Evolvulus sp."
-  },
-  {
-   "id": 14,
+   "id": 8,
    "name": "trang_do",
    "vi": "Trang đỏ",
    "sci": "Ixora coccinea"
   },
   {
-   "id": 15,
-   "name": "trang_trang",
-   "vi": "Trang trắng",
-   "sci": "Ixora finlaysoniana"
+   "id": 9,
+   "name": "trang_vang",
+   "vi": "Trang vàng",
+   "sci": "Ixora sp."
   }
+ ],
+ "model_parts": [
+  "model.part1",
+  "model.part2"
  ]
 }

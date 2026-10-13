@@ -1,10 +1,10 @@
 # Hoa Phenikaa: nhận diện hoa real-time
 
-Web-app nhận diện **15 loài hoa** trong khuôn viên Đại học Phenikaa bằng camera điện thoại.
-Mô hình **YOLO11n-cls** (1,5M tham số) chạy ngay trên trình duyệt bằng ONNX Runtime Web, khung hình không được gửi đi đâu.
+Web-app **phát hiện (object detection) 10 loài hoa** trong khuôn viên Đại học Phenikaa bằng camera điện thoại: vẽ khung + tên loài cho từng bông hoa.
+Mô hình **YOLO11n-detect** (2,6M tham số) chạy ngay trên trình duyệt bằng ONNX Runtime Web, khung hình không được gửi đi đâu.
 
-**Dùng thử:** https://quanhhquanhhh.github.io/hoa-phenikaa/ → bấm *Mở camera* → đưa bông hoa vào giữa khung vuông.
+**Dùng thử:** https://quanhhquanhhh.github.io/hoa-phenikaa/ → bấm *Mở camera* → hướng camera vào bụi hoa.
 
-Các loài: Bạch đồng nữ, Chiều tím, Dâm bụt cam, Dâm bụt đỏ, Dâm bụt hồng, Dâm bụt vàng, Hoa hồng, Huỳnh anh, Lài trâu, Mai chỉ thiên, Mía dò đỏ, Mỏ két, Thanh tú, Trang đỏ, Trang trắng.
+Các loài: Chiều tím, Dâm bụt đỏ, Dâm bụt vàng, Hoa hồng, Huỳnh anh, Lài trâu (Ngọc bút), Mía dò đỏ, Mỏ két, Trang đỏ, Trang vàng.
 
-Khi khung hình không có loài nào trong danh sách, app hiện **"Chưa nhận ra hoa"** thay vì đoán bừa.
+Test (563 ảnh): mAP50 = 0,838, mAP50-95 = 0,656.

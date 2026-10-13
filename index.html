@@ -7,27 +7,25 @@
 <meta name="theme-color" content="#0b1410">
 <title>Phenikaa Flowers</title>
 <style>
-  :root { --bg:#0b1410; --fg:#eef5f0; --muted:#9db3a6; --accent:#5ee08f; --warn:#ffc857; --card:rgba(10,20,15,.72); }
+  :root { --bg:#0b1410; --fg:#eef5f0; --muted:#9db3a6; --accent:#5ee08f; --card:rgba(10,20,15,.72); }
   * { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; }
   html, body { height:100%; background:var(--bg); color:var(--fg);
     font:15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow:hidden; }
   #stage { position:fixed; inset:0; }
-  video { width:100%; height:100%; object-fit:cover; }
-  #guide { position:absolute; left:50%; top:50%; width:min(78vw,78vh); aspect-ratio:1; transform:translate(-50%,-58%);
-    border:2px solid rgba(255,255,255,.85); border-radius:18px; box-shadow:0 0 0 100vmax rgba(0,0,0,.28); pointer-events:none; }
+  video, #overlay { position:absolute; inset:0; width:100%; height:100%; }
+  video { object-fit:cover; }
   header { position:absolute; top:0; left:0; right:0; padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;
     display:flex; justify-content:space-between; align-items:center; background:linear-gradient(#000a,#0000); }
-  header b { font-size:16px; letter-spacing:.2px; }
+  header b { font-size:16px; }
   #fps { color:var(--muted); font-variant-numeric:tabular-nums; font-size:13px; }
   #panel { position:absolute; left:12px; right:12px; bottom:calc(env(safe-area-inset-bottom) + 12px);
-    background:var(--card); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-    border-radius:18px; padding:14px 16px; }
-  #top1 { font-size:26px; font-weight:700; }
-  #sci { color:var(--muted); font-style:italic; font-size:13px; margin-bottom:8px; }
-  .row { display:grid; grid-template-columns: 1fr 52px; gap:8px; align-items:center; margin:5px 0; font-size:14px; }
-  .bar { height:6px; border-radius:3px; background:#ffffff1f; overflow:hidden; grid-column:1/3; margin-top:-3px; }
-  .bar i { display:block; height:100%; background:var(--accent); transition:width .15s; }
-  .pct { text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); }
+    background:var(--card); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-radius:18px; padding:14px 16px; }
+  #title { font-size:22px; font-weight:700; }
+  #sub { color:var(--muted); font-size:13px; margin:2px 0 6px; }
+  #list { display:flex; flex-wrap:wrap; gap:6px; min-height:4px; }
+  .chip { display:flex; align-items:center; gap:6px; padding:5px 10px; border-radius:99px; background:#ffffff14; font-size:14px; }
+  .chip i { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .chip span { color:var(--muted); font-variant-numeric:tabular-nums; }
   .btns { display:flex; gap:8px; margin-top:12px; }
   button { flex:1; padding:11px; border:0; border-radius:12px; background:#ffffff1a; color:var(--fg); font-size:14px; font-weight:600; }
   button:active { background:#ffffff33; }
@@ -35,19 +33,17 @@
     text-align:center; padding:24px; background:var(--bg); }
   #start button { flex:none; padding:14px 28px; background:var(--accent); color:#06210f; font-size:16px; }
   #status { color:var(--muted); max-width:340px; }
-  .low #top1 { color:var(--warn); }
-  .low .bar i { background:var(--muted); }
 </style>
 </head>
 <body>
 <div id="stage">
   <video id="video" playsinline muted></video>
-  <div id="guide"></div>
+  <canvas id="overlay"></canvas>
   <header><b>🌼 Phenikaa Flowers</b><span id="fps">– FPS</span></header>
   <div id="panel">
-    <div id="top1">…</div>
-    <div id="sci">Đưa bông hoa vào giữa khung</div>
-    <div id="rows"></div>
+    <div id="title">Đang tìm hoa…</div>
+    <div id="sub">Hướng camera vào bụi hoa</div>
+    <div id="list"></div>
     <div class="btns"><button id="flip">Đổi camera</button><button id="pause">Tạm dừng</button></div>
   </div>
 </div>
@@ -58,29 +54,48 @@
   <button id="go" disabled>Mở camera</button>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.all.min.js"></script>
 <script>
 ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
 ort.env.wasm.numThreads = 1;
-const MODEL_VERSION = "5-15loai"; // đổi khi cập nhật model để điện thoại không dùng bản cũ trong cache
+const MODEL_VERSION = "det10-1";   // đổi khi cập nhật model để điện thoại không dùng bản cũ trong cache
+const CONF = 0.45, IOU = 0.5, MAX_DET = 30, SMOOTH_HITS = 2;
 
 const $ = (id) => document.getElementById(id);
-const video = $("video"), canvas = document.createElement("canvas");
-const ctx = canvas.getContext("2d", { willReadFrequently: true });
-let session, meta, inputName, facing = "environment", stream, paused = false;
-const history = [], SMOOTH = 5;
-const MIN_CONF = 0.55;     // dưới ngưỡng này coi như chưa nhận ra (không đoán bừa)
-const REJECT = "khac";     // lớp "không phải loài nào trong danh sách"
+const video = $("video"), overlay = $("overlay"), octx = overlay.getContext("2d");
+const inCanvas = document.createElement("canvas"), ictx = inCanvas.getContext("2d", { willReadFrequently: true });
+let session, meta, S, facing = "environment", stream, paused = false, backend = "";
+const recent = [];   // lịch sử vài khung gần nhất để danh sách loài không nhấp nháy
+const PALETTE = ["#ff6b6b","#ffd93d","#6bcB77","#4d96ff","#ff9f1c","#c77dff","#f15bb5","#00bbf9","#9ef01a",
+                 "#ffadad","#fdffb6","#caffbf","#9bf6ff","#a0c4ff","#bdb2ff","#ffc6ff","#e9c46a","#2ec4b6"];
 
 async function init() {
   try {
     meta = await (await fetch("classes.json?v=" + MODEL_VERSION)).json();
-    canvas.width = canvas.height = meta.imgsz;
-    session = await ort.InferenceSession.create("model.onnx?v=" + MODEL_VERSION, { executionProviders: ["wasm"] });
-    inputName = session.inputNames[0];
-    $("status").textContent = `Model sẵn sàng · ${meta.classes.filter((c) => c.name !== REJECT).length} loài hoa`;
+    S = meta.imgsz; inCanvas.width = inCanvas.height = S;
+    const opts = (ep) => ({ executionProviders: [ep], graphOptimizationLevel: "all" });
+    const model = await loadModel();
+    for (const ep of (navigator.gpu ? ["webgpu", "wasm"] : ["wasm"])) {
+      try { session = await ort.InferenceSession.create(model, opts(ep)); backend = ep; break; }
+      catch (e) { console.warn(ep, e); }
+    }
+    if (!session) throw new Error("không khởi tạo được ONNX Runtime");
+    $("status").textContent = `Model sẵn sàng · ${meta.classes.length} loài hoa`;
     $("go").disabled = false;
   } catch (e) { $("status").textContent = "Lỗi tải model: " + e.message; }
+}
+
+// Model được chia thành nhiều phần (giới hạn upload) -> tải song song rồi ghép lại thành 1 file ONNX
+async function loadModel() {
+  const parts = meta.model_parts || ["model.onnx"];
+  const bufs = await Promise.all(parts.map(async (p) => {
+    const r = await fetch(p + "?v=" + MODEL_VERSION);
+    if (!r.ok) throw new Error(p + " " + r.status);
+    return new Uint8Array(await r.arrayBuffer());
+  }));
+  const out = new Uint8Array(bufs.reduce((n, b) => n + b.length, 0));
+  let off = 0; for (const b of bufs) { out.set(b, off); off += b.length; }
+  return out;
 }
 
 async function openCamera() {
@@ -91,70 +106,102 @@ async function openCamera() {
   await video.play();
 }
 
-// Vùng của video nằm trong khung vuông trên màn hình (video hiển thị kiểu object-fit: cover)
-function guideRegion() {
-  const vw = video.videoWidth, vh = video.videoHeight, r = $("guide").getBoundingClientRect();
-  const W = innerWidth, H = innerHeight, k = Math.max(W / vw, H / vh);
-  const ox = (W - vw * k) / 2, oy = (H - vh * k) / 2;
-  let side = Math.min(r.width / k, vw, vh);
-  let x = (r.left - ox) / k, y = (r.top - oy) / k;
-  x = Math.min(Math.max(x, 0), vw - side); y = Math.min(Math.max(y, 0), vh - side);
-  return [x, y, side];
-}
-
-// Tiền xử lý giống Ultralytics: vùng vuông (trong khung) -> resize 224 -> RGB/255, CHW
+// Letterbox toàn khung hình về S x S (giống Ultralytics), trả về tensor + thông số để quy đổi box ngược lại
 function preprocess() {
-  const s = meta.imgsz, [x, y, side] = guideRegion();
-  ctx.drawImage(video, x, y, side, side, 0, 0, s, s);
-  const px = ctx.getImageData(0, 0, s, s).data, n = s * s, f = new Float32Array(3 * n);
-  for (let i = 0; i < n; i++) {
-    f[i] = px[4 * i] / 255; f[n + i] = px[4 * i + 1] / 255; f[2 * n + i] = px[4 * i + 2] / 255;
-  }
-  return new ort.Tensor("float32", f, [1, 3, s, s]);
+  const vw = video.videoWidth, vh = video.videoHeight, r = Math.min(S / vw, S / vh);
+  const nw = Math.round(vw * r), nh = Math.round(vh * r), px = (S - nw) / 2, py = (S - nh) / 2;
+  ictx.fillStyle = "rgb(114,114,114)"; ictx.fillRect(0, 0, S, S);
+  ictx.drawImage(video, 0, 0, vw, vh, px, py, nw, nh);
+  const d = ictx.getImageData(0, 0, S, S).data, n = S * S, f = new Float32Array(3 * n);
+  for (let i = 0; i < n; i++) { f[i] = d[4 * i] / 255; f[n + i] = d[4 * i + 1] / 255; f[2 * n + i] = d[4 * i + 2] / 255; }
+  return { tensor: new ort.Tensor("float32", f, [1, 3, S, S]), r, px, py };
 }
 
-function render(p) {
-  const order = [...p.keys()].sort((a, b) => p[b] - p[a]);
-  const best = meta.classes[order[0]], conf = p[order[0]];
-  const unknown = best.name === REJECT || conf < MIN_CONF;
-  $("panel").classList.toggle("low", unknown);
-  if (unknown) {
-    $("top1").textContent = "Chưa nhận ra hoa";
-    $("sci").textContent = best.name === REJECT
-      ? "Không phải loài nào trong danh sách, hoặc chưa thấy bông hoa trong khung"
-      : "Chưa chắc chắn, hãy đưa bông hoa vào giữa khung và giữ máy yên";
-  } else {
-    $("top1").textContent = best.vi;
-    $("sci").textContent = `${best.sci} · ${(conf * 100).toFixed(1)}%`;
+function iou(a, b) {
+  const x0 = Math.max(a[0], b[0]), y0 = Math.max(a[1], b[1]), x1 = Math.min(a[2], b[2]), y1 = Math.min(a[3], b[3]);
+  const inter = Math.max(0, x1 - x0) * Math.max(0, y1 - y0);
+  return inter / ((a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter + 1e-9);
+}
+
+// Output YOLO11-detect: [1, 4 + nc, N] (cx, cy, w, h, điểm từng lớp) -> lọc theo ngưỡng + NMS theo lớp
+function postprocess(out, nc) {
+  const data = out.data, N = out.dims[2], cand = [];
+  for (let j = 0; j < N; j++) {
+    let best = 0, cls = -1;
+    for (let c = 0; c < nc; c++) { const s = data[(4 + c) * N + j]; if (s > best) { best = s; cls = c; } }
+    if (best < CONF) continue;
+    const cx = data[j], cy = data[N + j], w = data[2 * N + j], h = data[3 * N + j];
+    cand.push({ box: [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2], score: best, cls });
   }
-  // 3 loài hoa có xác suất cao nhất (không tính lớp "khác")
-  const flowers = order.filter((i) => meta.classes[i].name !== REJECT).slice(0, 3);
-  $("rows").innerHTML = flowers.map((i) => `<div class="row"><span>${meta.classes[i].vi}</span>
-      <span class="pct">${(p[i] * 100).toFixed(0)}%</span><div class="bar"><i style="width:${p[i] * 100}%"></i></div></div>`).join("");
+  cand.sort((a, b) => b.score - a.score);
+  const keep = [];
+  for (const d of cand) {
+    if (keep.every((k) => k.cls !== d.cls || iou(k.box, d.box) < IOU)) keep.push(d);
+    if (keep.length >= MAX_DET) break;
+  }
+  return keep;
+}
+
+function draw(dets, lb) {
+  const W = overlay.clientWidth, H = overlay.clientHeight, dpr = devicePixelRatio || 1;
+  if (overlay.width !== W * dpr) { overlay.width = W * dpr; overlay.height = H * dpr; }
+  octx.setTransform(dpr, 0, 0, dpr, 0, 0); octx.clearRect(0, 0, W, H);
+  // video hiển thị kiểu object-fit: cover -> quy đổi toạ độ ảnh gốc sang màn hình
+  const vw = video.videoWidth, vh = video.videoHeight, k = Math.max(W / vw, H / vh);
+  const ox = (W - vw * k) / 2, oy = (H - vh * k) / 2;
+  octx.lineWidth = 3; octx.font = "600 15px -apple-system, Segoe UI, sans-serif"; octx.textBaseline = "top";
+  for (const d of dets) {
+    const [x0, y0, x1, y1] = d.box.map((v, i) => (i % 2 ? (v - lb.py) / lb.r : (v - lb.px) / lb.r));
+    const X0 = ox + x0 * k, Y0 = oy + y0 * k, X1 = ox + x1 * k, Y1 = oy + y1 * k, col = PALETTE[d.cls % PALETTE.length];
+    octx.strokeStyle = col; octx.strokeRect(X0, Y0, X1 - X0, Y1 - Y0);
+    const label = `${meta.classes[d.cls].vi} ${(d.score * 100).toFixed(0)}%`, tw = octx.measureText(label).width + 10;
+    const ty = Y0 > 24 ? Y0 - 24 : Y0;
+    octx.fillStyle = col; octx.fillRect(X0 - 1.5, ty, tw, 24);
+    octx.fillStyle = "#0b1410"; octx.fillText(label, X0 + 4, ty + 4);
+  }
+}
+
+function renderList(dets) {
+  recent.push(dets); if (recent.length > 4) recent.shift();
+  // một loài được liệt kê khi xuất hiện ở >= SMOOTH_HITS trong 4 khung gần nhất
+  const hits = new Map();
+  for (const ds of recent) {
+    const seen = new Map();
+    for (const d of ds) seen.set(d.cls, Math.max(seen.get(d.cls) || 0, d.score));
+    for (const [c, s] of seen) { const h = hits.get(c) || { n: 0, s: 0 }; hits.set(c, { n: h.n + 1, s: Math.max(h.s, s) }); }
+  }
+  const species = [...hits].filter(([, h]) => h.n >= SMOOTH_HITS).sort((a, b) => b[1].s - a[1].s);
+  if (!species.length) {
+    $("title").textContent = "Chưa nhận ra hoa";
+    $("sub").textContent = "Đưa bông hoa vào khung hình, giữ máy yên";
+  } else {
+    const top = meta.classes[species[0][0]];
+    $("title").textContent = species.length === 1 ? top.vi : `${species.length} loài hoa`;
+    $("sub").textContent = species.length === 1 ? top.sci : "Mỗi khung màu là một bông hoa";
+  }
+  $("list").innerHTML = species.map(([c, h]) =>
+    `<div class="chip"><i style="background:${PALETTE[c % PALETTE.length]}"></i>${meta.classes[c].vi} <span>${(h.s * 100).toFixed(0)}%</span></div>`).join("");
 }
 
 let last = performance.now(), fps = 0;
 async function loop() {
   if (!paused && video.readyState >= 2) {
-    const out = await session.run({ [inputName]: preprocess() });
-    const prob = out[session.outputNames[0]].data;          // model export đã có softmax
-    history.push(Float32Array.from(prob)); if (history.length > SMOOTH) history.shift();
-    const avg = prob.map((_, k) => history.reduce((s, h) => s + h[k], 0) / history.length);
-    render(avg);
+    const lb = preprocess();
+    const out = await session.run({ [session.inputNames[0]]: lb.tensor });
+    const dets = postprocess(out[session.outputNames[0]], meta.classes.length);
+    draw(dets, lb); renderList(dets);
     const now = performance.now(); fps = fps ? 0.9 * fps + 100 / (now - last) : 1000 / (now - last); last = now;
-    $("fps").textContent = `${fps.toFixed(0)} FPS`;
+    $("fps").textContent = `${fps.toFixed(0)} FPS · ${backend}`;
   }
   requestAnimationFrame(loop);
 }
 
 $("go").onclick = async () => {
   try { await openCamera(); $("start").remove(); loop(); }
-  catch (e) { $("status").textContent = "Không mở được camera: " + e.message +
-    (isSecureContext ? "" : " (cần mở bằng https://)"); }
+  catch (e) { $("status").textContent = "Không mở được camera: " + e.message + (isSecureContext ? "" : " (cần https://)"); }
 };
-$("flip").onclick = async () => { facing = facing === "environment" ? "user" : "environment"; history.length = 0; await openCamera(); };
-$("pause").onclick = () => { paused = !paused; $("pause").textContent = paused ? "Tiếp tục" : "Tạm dừng";
-  paused ? video.pause() : video.play(); };
+$("flip").onclick = async () => { facing = facing === "environment" ? "user" : "environment"; recent.length = 0; await openCamera(); };
+$("pause").onclick = () => { paused = !paused; $("pause").textContent = paused ? "Tiếp tục" : "Tạm dừng"; paused ? video.pause() : video.play(); };
 init();
 </script>
 </body>
